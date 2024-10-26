@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from colorama import Fore, Style
+from mac_vendor_lookup import MacLookup
 import scapy.all as scapy
 import sys, os, signal
 
@@ -15,18 +16,25 @@ def scan(ip):
     broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
     arp_request_broadcast = broadcast / arp_request
     answered_list = scapy.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
+    
     devices = []
+    mac_lookup = MacLookup()
     for element in answered_list:
-        device = {"ip": element[1].psrc, "mac": element[1].hwsrc}
+        mac = element[1].hwsrc
+        try:
+            vendor = mac_lookup.lookup(mac)
+        except Exception:
+            vendor = "Unknown Vendor"
+        device = {"ip": element[1].psrc, "mac": mac, "vendor": vendor}
         devices.append(device)
     return devices
 
 def show_results(results):
-    sorted_results = sorted(results, key=lambda x: int(x['ip'].split('.')[-1]))  # Ordenar por el último octeto
-    print(f"\n\n{Style.BRIGHT + Fore.CYAN}IP\t\t\tMAC Address")
-    print(Style.DIM + "-----------------------------------------" + Fore.RESET + Style.RESET_ALL)
+    sorted_results = sorted(results, key=lambda x: int(x['ip'].split('.')[-1]))
+    print(f"\n\n{Style.BRIGHT + Fore.CYAN}IP\t\t\tMAC Address\t\t\tVendor")
+    print(Style.DIM + "------------------------------------------------------------------------" + Fore.RESET + Style.RESET_ALL)
     for device in sorted_results:
-        print(f"{device['ip']}\t\t{device['mac']}")
+        print(f"{device['ip']}\t\t{device['mac']}\t\t{device['vendor']}")
 
 if __name__ == "__main__":
     os.system("clear && figlet HostScan")
